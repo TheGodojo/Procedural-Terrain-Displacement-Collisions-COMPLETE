@@ -1,0 +1,31 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=2]
+
+[sub_resource type="Shader" id=6]
+code = "shader_type spatial;
+uniform vec4 albedo1:hint_color;
+uniform vec4 albedo2:hint_color;
+uniform vec4 albedo3:hint_color;
+varying vec3 normal;
+varying float verty;
+void vertex(){
+	normal = NORMAL;
+	verty=VERTEX.y; 
+}
+void fragment(){
+	float y = normal.y/2f+0.5;
+	y=max(y-0.8,0f)/0.2;
+	ALBEDO = mix(albedo2.xyz,albedo1.xyz,y);
+	float vert_y=verty+16f;
+	
+	vert_y = max(0f,vert_y);
+	vert_y = min(4f, vert_y);
+	vert_y/=4f;
+	ALBEDO = mix(albedo3.xyz,ALBEDO,vert_y);
+	
+}"
+
+[resource]
+shader = SubResource( 6 )
+shader_param/albedo1 = Color( 0.411765, 0.603922, 0.313726, 1 )
+shader_param/albedo2 = Color( 0.478431, 0.52549, 0.529412, 1 )
+shader_param/albedo3 = Color( 0.643137, 0.596078, 0.341176, 1 )

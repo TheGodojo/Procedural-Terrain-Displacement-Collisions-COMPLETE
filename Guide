@@ -1,0 +1,176 @@
+Step 1
+	Create Player Node
+		KinematicBody
+			Head
+				Camera
+					- far = 8192
+			CollisionShape
+			MeshInstance
+			
+Step 2 Movement
+	Input Map
+	Simple Movement
+		###
+		var direction = Vector3.ZERO
+		
+		if Input.is_action_pressed("move_forward"):
+			direction -= global_transform.basis.z
+		if Input.is_action_pressed("move_backward"):
+			direction += global_transform.basis.z
+		if Input.is_action_pressed("move_right"):
+			direction += global_transform.basis.x
+		if Input.is_action_pressed("move_left"):
+			direction -= global_transform.basis.x
+			
+		var velocity = speed*direction
+		
+		move_and_slide(velocity,Vector3.UP)
+		###
+	Linear Interpolate
+		###
+		var speed = 20
+		var acceleration_magnitude = 3
+		var velocity = Vector3.ZERO
+
+		func _physics_process(delta):
+			var direction = Vector3.ZERO
+			
+			if Input.is_action_pressed("move_forward"):
+				direction -= global_transform.basis.z
+			if Input.is_action_pressed("move_backward"):
+				direction += global_transform.basis.z
+			if Input.is_action_pressed("move_right"):
+				direction += global_transform.basis.x
+			if Input.is_action_pressed("move_left"):
+				direction -= global_transform.basis.x
+			
+			velocity = velocity.linear_interpolate(speed*direction.normalized(),delta*acceleration_magnitude)
+			
+			move_and_slide(velocity,Vector3.UP)
+		
+	
+Step 2
+	Mouse Mode
+		###
+		if Input.is_action_just_pressed("ui_cancel"):
+			if Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
+				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			else:
+				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+		###
+		
+	Mouse look
+		###
+		var look_sensitivity = 0.5
+		var max_vertical_look = 90
+		var min_vertical_look = -90
+		onready var head = $Head
+		
+		func _input(event):
+			if event is InputEventMouseMotion:
+				rotate_y(deg2rad(-event.relative.x)*look_sensitivity)
+				head.rotate_x(deg2rad(-event.relative.y)*look_sensitivity)
+		###
+		
+	Mouse limits
+		###
+		var max_vertical_look = 90
+		var min_vertical_look = -90
+		
+		func _input(event):
+			if event is InputEventMouseMotion:
+				rotate_y(deg2rad(-event.relative.x)*look_sensitivity)
+				head.rotate_x(deg2rad(-event.relative.y)*look_sensitivity)
+				
+				if head.rotation_degrees.x > max_vertical_look:
+					head.rotation_degrees.x = max_vertical_look
+				elif head.rotation_degrees.x < min_vertical_look:
+					head.rotation_degrees.x = min_vertical_look
+	
+Step 3
+	Jump
+		###
+		if is_on_floor():
+			vertical_velocity = 0
+			if Input.is_action_just_pressed("jump"):
+				vertical_velocity = jump_force
+		else:
+			vertical_velocity += gravity_acceleration * delta
+		
+		var velocity = horizontal_velocity
+		velocity.y = vertical_velocity
+		
+		move_and_slide(velocity,Vector3.UP)
+		###
+		
+	Jump Movement
+		###
+		var ground_acceleration = 5
+		var airborne_acceleration = 1
+		
+		
+		var acceleration
+	
+		if is_on_floor():
+			vertical_velocity = 0
+			acceleration = ground_acceleration
+			if Input.is_action_just_pressed("jump"):
+				vertical_velocity = jump_force
+		else:
+			vertical_velocity += gravity_acceleration * delta
+			acceleration = airborne_acceleration
+	Better Jump
+		Feet
+			CollisionShape
+		###
+		var is_grounded = false
+		
+		
+		if is_grounded and not vertical_velocity > 0:
+			vertical_velocity = 0
+			acceleration = ground_acceleration
+			if Input.is_action_just_pressed("jump"):
+				vertical_velocity = jump_force
+		
+		
+		func _on_Feet_body_entered(body):
+			if not body.is_in_group("Player"):
+				is_grounded = true
+	
+		func _on_Feet_body_exited(body):
+			is_grounded = false
+		###
+	Even Better Jump
+		func is_on_ground():
+			var space_state = get_world().direct_space_state
+			var parameters = PhysicsShapeQueryParameters.new()
+			parameters.exclude = [get_rid()]
+			parameters.set_shape(SphereShape.new())
+			parameters.transform = $Feet.global_transform
+			var result = space_state.intersect_shape(parameters)
+			return result
+			
+	Jump Allowance
+		Feet
+			CollisionShape
+				Timer
+		###
+		onready var just_airborne_timer = $Feet/CollisionShape/Timer
+		
+		
+		func _on_Feet_body_entered(body):
+			just_airborne_timer.stop()
+			if not body.is_in_group("Player"):
+				is_grounded = true
+			
+
+		func _on_Feet_body_exited(body):
+			just_airborne_timer.start()
+			
+
+		func _on_Timer_timeout():
+			is_grounded = false
+		###
+	
+Step 4 
+	Refactoring
